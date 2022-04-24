@@ -1,30 +1,27 @@
-use redis::{Commands, RedisResult};
+use redis::{RedisResult};
 use tracing::info;
 
-pub fn create_account_call(key: String, val: String) -> RedisResult<()> {
+use crate::model::clients::DynDBClient;
+
+pub async fn create_account_call(key: String, val: String, client: DynDBClient) -> RedisResult<()> {
     info!("Creating account {} at {}", val, key);
 
-    let client = redis::Client::open("redis://127.0.0.1/")?;
-    let mut con = client.get_connection()?;
-    let response = con.set(key, val);
+    let response = client.write(key, val).await;
     info!("Retrieved {:?}", &response);
     response
 }
 
-pub fn get_account_call(key: String) -> RedisResult<String> {
+pub async fn get_account_call(key: String, client: DynDBClient) -> RedisResult<String> {
     info!("Retrieving account from {}", key);
-    let client = redis::Client::open("redis://127.0.0.1/")?;
-    let mut con = client.get_connection()?;
-    let response = con.get(key);
+
+    let response = client.read(key).await;
     info!("Retrieved {:?}", &response);
     response
 }
 
-pub fn create_transaction_call(key: String, val: String) -> RedisResult<()> {
+pub async fn create_transaction_call(key: String, val: String, client: DynDBClient) -> RedisResult<()> {
     info!("Recording transaction {} at {}", val, key);
-    let client = redis::Client::open("redis://127.0.0.1/")?;
-    let mut con = client.get_connection()?;
-    let response = con.set(key, val);
+    let response = client.write(key, val).await;
     info!("Retrieved {:?}", &response);
     response
 }

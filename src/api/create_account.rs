@@ -1,10 +1,11 @@
-use axum::extract::Json;
+use axum::extract::{Extension, Json};
 use axum::http::StatusCode;
 use serde::Deserialize;
-use tracing::{instrument, error, info};
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::model::account::{Account, AccountBuilder};
+use crate::model::clients::DynDBClient;
 use crate::service::redis::redis_service_adapter::{self, CreateAccountDLInput};
 
 #[derive(Deserialize, Debug)]
@@ -13,9 +14,9 @@ pub struct CreateAccountRequest {
     public_key: String,
 }
 
-#[instrument(name = "CreateAccount")]
 pub async fn create_account(
-    Json(request): Json<CreateAccountRequest>
+    Json(request): Json<CreateAccountRequest>,
+    Extension(db_client): Extension<DynDBClient>
     ) -> Result<Json<Account>, StatusCode> {
         info!("{:?}", request);
         let account_id: Uuid = get_account_id();
@@ -32,7 +33,7 @@ pub async fn create_account(
             .unwrap();
         
         let input = CreateAccountDLInput { account: &account };
-        let output = redis_service_adapter::create_account(input);
+        let output = redis_service_adapter::create_account(input, db_client).await;
 
         match output.result {
             Ok(_) => {

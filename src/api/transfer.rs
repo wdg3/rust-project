@@ -1,9 +1,11 @@
+use axum::Extension;
 use axum::extract::Json;
 use axum::http::StatusCode;
 use serde::Deserialize;
-use tracing::{instrument, error, info};
+use tracing::{error, info};
 use uuid::Uuid;
 
+use crate::model::clients::DynDBClient;
 use crate::model::transaction::{
     Transaction,
     TransactionBuilder,
@@ -23,9 +25,9 @@ pub struct TransferRequest {
     signature: String,
 }
 
-#[instrument("Transfer")]
 pub async fn transfer(
-    Json(request): Json<TransferRequest>
+    Json(request): Json<TransferRequest>,
+    Extension(db_client): Extension<DynDBClient>
 ) -> Result<Json<Transaction>, StatusCode> {
     info!("{:?}", request);
 
@@ -57,13 +59,13 @@ pub async fn transfer(
         .build()
         .unwrap();
 
-    let validation_status = validate(&transaction);
+    let validation_status = validate(&transaction, db_client.clone()).await;
     if validation_status.is_err() {
         return Err(validation_status.err().unwrap())
     }
 
     let input = CreateTransactionDLInput { transaction: &transaction };
-    let output = redis_service_adapter::create_transaction(input);
+    let output = redis_service_adapter::create_transaction(input, db_client).await;
 
     match output.result {
         Ok(_) => {

@@ -24,6 +24,7 @@ dependencies = [
  "axum",
  "axum-macros",
  "derive_builder",
+ "futures",
  "redis",
  "serde",
  "serde_json",

@@ -1,10 +1,12 @@
+use axum::Extension;
 use axum::extract::Json;
 use axum::http::StatusCode;
 use serde::Deserialize;
-use tracing::{instrument, error, info};
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::model::account::Account;
+use crate::model::clients::DynDBClient;
 use crate::service::redis::redis_service_adapter::{self, GetAccountDLInput};
 
 #[derive(Deserialize, Debug)]
@@ -12,13 +14,13 @@ pub struct GetAccountRequest {
     account_id: Uuid,
 }
 
-#[instrument(name = "GetAccount")]
 pub async fn get_account(
-    Json(request): Json<GetAccountRequest>
+    Json(request): Json<GetAccountRequest>,
+    Extension(db_client): Extension<DynDBClient>
 ) -> Result<Json<Account>, StatusCode> {
     info!("{:?}", request);
     let input = GetAccountDLInput { account_id: &request.account_id };
-    let output = redis_service_adapter::get_account(input);
+    let output = redis_service_adapter::get_account(input, db_client).await;
 
     match output.result {
         Ok(account) => {
